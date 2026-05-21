@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Site Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  :root{
+    --bg:#0d1117;--surface:#161b22;--border:#21262d;--border2:#30363d;
+    --accent:#f0883e;--green:#3fb950;--red:#f85149;--blue:#58a6ff;--purple:#bc8cff;
+    --text:#e6edf3;--muted:#8b949e;--dim:#6e7681;
+    --mono:'DM Mono',monospace;--head:'Syne',sans-serif;
+  }
+  body{background:var(--bg);color:var(--text);font-family:var(--mono);min-height:100vh;}
+  ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+  input:-webkit-autofill{-webkit-box-shadow:0 0 0 30px var(--surface) inset!important;-webkit-text-fill-color:var(--text)!important}
+  .screen{display:none;} .screen.active{display:block;} #loginScreen.active{display:flex;}
+
+  /* Login */
+  #loginScreen{min-height:100vh;flex-direction:column;align-items:center;justify-content:center;padding:24px;}
+  .login-hero{text-align:center;margin-bottom:36px;}
+  .login-eyebrow{font-family:var(--head);font-size:11px;letter-spacing:.2em;color:var(--accent);text-transform:uppercase;margin-bottom:8px;}
+  .login-title{font-family:var(--head);font-size:34px;font-weight:800;line-height:1.1;}
+  .login-title span{color:var(--accent);}
+  .login-sub{font-size:11px;color:var(--dim);margin-top:8px;letter-spacing:.05em;}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px;width:100%;max-width:360px;}
+  .field{margin-bottom:18px;}
+  .field label{display:block;font-family:var(--head);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;}
+  .field input{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;font-size:13px;color:var(--text);font-family:var(--mono);outline:none;}
+  .field input:focus{border-color:var(--accent);}
+  .field select{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;font-size:13px;color:var(--text);font-family:var(--mono);outline:none;}
+  .demo-box{margin-top:18px;padding:14px;background:var(--bg);border-radius:8px;font-size:11px;color:var(--dim);line-height:1.9;}
+  .demo-label{font-family:var(--head);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:4px;}
+  .demo-box span{color:var(--text);}
+
+  /* Topbar */
+  .topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10;}
+  .topbar-title{font-family:var(--head);font-weight:700;font-size:13px;color:var(--accent);letter-spacing:.05em;}
+  .topbar-sub{font-size:11px;color:var(--dim);margin-top:2px;}
+  .inner{max-width:520px;margin:0 auto;padding:16px;}
+
+  /* Status card */
+  .status-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;margin-bottom:14px;}
+  .status-row{display:flex;align-items:center;gap:8px;margin-bottom:12px;}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--dim);flex-shrink:0;transition:background .3s;}
+  .dot.active{background:var(--green);animation:pulse 2s infinite;}
+  .dot.ended{background:var(--red);}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 3px rgba(63,185,80,.2)}50%{box-shadow:0 0 0 6px rgba(63,185,80,.05)}}
+  .status-label{font-family:var(--head);font-size:11px;letter-spacing:.1em;color:var(--dim);}
+  .status-label.active{color:var(--green);}
+  .status-label.ended{color:var(--red);}
+  .timer{font-family:var(--head);font-size:44px;font-weight:800;letter-spacing:-.02em;color:var(--text);margin-bottom:2px;}
+  .timer-lbl{font-size:10px;color:var(--dim);letter-spacing:.1em;text-transform:uppercase;margin-bottom:14px;}
+  .next-row{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:6px;}
+  .next-val{color:var(--accent);}
+  .progress{height:3px;background:var(--border);border-radius:2px;overflow:hidden;}
+  .progress-fill{height:100%;width:0%;background:var(--accent);border-radius:2px;transition:width 1s linear;}
+  .session-info{margin-top:12px;font-size:11px;color:var(--dim);}
+  .session-info span{color:var(--muted);}
+
+  /* Buttons */
+  .btn-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+  .btn{padding:13px 16px;border-radius:8px;border:1px solid var(--border);font-family:var(--mono);font-size:12px;font-weight:500;cursor:pointer;letter-spacing:.04em;background:var(--surface);color:var(--text);transition:opacity .15s;-webkit-tap-highlight-color:transparent;}
+  .btn:disabled{opacity:.3;cursor:not-allowed;}
+  .btn-green{background:rgba(63,185,80,.1);border-color:var(--green);color:var(--green);}
+  .btn-red{background:rgba(248,81,73,.1);border-color:var(--red);color:var(--red);}
+  .btn-orange{background:rgba(240,136,62,.1);border-color:var(--accent);color:var(--accent);}
+  .btn-ghost{background:var(--surface);border-color:var(--border);color:var(--muted);}
+  .btn-primary{background:var(--accent);border-color:var(--accent);color:var(--bg);font-weight:600;}
+  .btn-full{width:100%;}
+  .btn-sm{padding:6px 12px;font-size:11px;}
+  .btn-danger{background:rgba(248,81,73,.1);border-color:rgba(248,81,73,.4);color:var(--red);}
+
+  /* Messages */
+  .error-box{background:rgba(248,81,73,.08);border:1px solid rgba(248,81,73,.3);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--red);margin-bottom:14px;display:none;}
+  .success-box{background:rgba(63,185,80,.08);border:1px solid rgba(63,185,80,.3);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--green);margin-bottom:14px;display:none;}
+
+  /* Section */
+  .section-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+  .section-title{font-family:var(--head);font-size:10px;color:var(--dim);letter-spacing:.1em;text-transform:uppercase;}
+  .badge{font-size:10px;background:rgba(240,136,62,.15);color:var(--accent);padding:2px 8px;border-radius:20px;}
+  .empty{background:var(--surface);border:1px dashed var(--border);border-radius:10px;padding:28px;text-align:center;font-size:12px;color:var(--dim);line-height:1.8;}
+
+  /* Snaps */
+  .snap-list{display:flex;flex-direction:column;gap:6px;}
+  .snap-row{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px;display:grid;grid-template-columns:24px 1fr auto;gap:8px;align-items:start;animation:slideIn .2s ease;}
+  .snap-row.out-of-range{background:rgba(248,81,73,.05);border-color:rgba(248,81,73,.3);}
+  @keyframes slideIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+  .snap-idx{font-size:10px;color:var(--dim);padding-top:2px;}
+  .snap-time{font-size:12px;font-weight:500;color:var(--text);}
+  .snap-coords{font-size:11px;color:var(--dim);margin-top:2px;}
+  .snap-acc{font-size:10px;color:var(--dim);margin-top:1px;}
+  .snap-dist{font-size:10px;color:var(--red);margin-top:2px;font-weight:500;}
+  .snap-badge{font-size:10px;padding:2px 7px;border-radius:4px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;}
+  .snap-oor{font-size:10px;padding:2px 6px;border-radius:4px;background:rgba(248,81,73,.15);color:var(--red);margin-top:4px;display:inline-block;}
+
+  /* Admin tabs */
+  .tabs{display:flex;border-bottom:1px solid var(--border);background:var(--surface);}
+  .tab{flex:1;padding:12px;font-family:var(--head);font-size:11px;letter-spacing:.08em;text-transform:uppercase;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--dim);cursor:pointer;}
+  .tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+
+  /* Sessions */
+  .session-row{background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:8px;overflow:hidden;}
+  .session-row.has-oor{border-color:rgba(248,81,73,.4);}
+  .session-hdr{padding:12px 14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;}
+  .session-hdr:hover{background:rgba(255,255,255,.02);}
+  .session-name{font-family:var(--head);font-size:13px;font-weight:700;color:var(--text);}
+  .session-meta{font-size:11px;color:var(--dim);margin-top:2px;}
+  .session-dur{font-family:var(--head);font-size:12px;color:var(--accent);}
+  .session-snaps{font-size:11px;color:var(--dim);margin-top:1px;}
+  .session-body{border-top:1px solid var(--border);padding:12px 14px;display:none;}
+  .session-body.open{display:block;}
+  .active-pill{color:var(--green);}
+  .oor-pill{font-size:10px;background:rgba(248,81,73,.15);color:var(--red);padding:2px 7px;border-radius:4px;margin-left:6px;}
+
+  /* Users */
+  .user-row{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;}
+  .user-name{font-family:var(--head);font-size:13px;color:var(--text);}
+  .user-un{font-size:11px;color:var(--dim);margin-top:2px;}
+
+  /* Danger zone */
+  .danger-zone{background:rgba(248,81,73,.05);border:1px solid rgba(248,81,73,.2);border-radius:10px;padding:16px;margin-bottom:12px;}
+  .danger-title{font-family:var(--head);font-size:10px;color:var(--red);letter-spacing:.1em;text-transform:uppercase;margin-bottom:12px;}
+  .danger-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+
+  /* Confirm overlay */
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:100;padding:24px;display:none;}
+  .overlay.show{display:flex;}
+  .confirm-box{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;max-width:320px;width:100%;}
+  .confirm-title{font-family:var(--head);font-size:16px;font-weight:700;margin-bottom:8px;}
+  .confirm-msg{font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:20px;}
+  .confirm-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+
+  /* Settings card */
+  .settings-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px;}
+  .settings-title{font-family:var(--head);font-size:10px;color:var(--dim);letter-spacing:.1em;text-transform:uppercase;margin-bottom:12px;}
+  .settings-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+  .settings-label{font-size:12px;color:var(--muted);}
+  .settings-val{font-size:12px;color:var(--accent);font-family:var(--head);}
+</style>
+</head>
+<body>
+
+<!-- CONFIRM OVERLAY -->
+<div class="overlay" id="overlay">
+  <div class="confirm-box">
+    <div class="confirm-title" id="confirmTitle">Are you sure?</div>
+    <div class="confirm-msg" id="confirmMsg"></div>
+    <div class="confirm-btns">
+      <button class="btn btn-ghost" onclick="closeConfirm()">Cancel</button>
+      <button class="btn btn-danger" id="confirmOkBtn" onclick="doConfirm()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- LOGIN -->
+<div id="loginScreen" class="screen active">
+  <div class="login-hero">
+    <div class="login-eyebrow">Site Attendance</div>
+    <div class="login-title">TRACK<span>.</span>LOG<span>.</span>PROVE</div>
+    <div class="login-sub">GPS attendance with admin oversight</div>
+  </div>
+  <div class="card">
+    <div class="field"><label>Username</label><input id="loginUser" placeholder="Enter username" autocomplete="username"></div>
+    <div class="field"><label>Password</label><input id="loginPass" type="password" placeholder="Enter password" autocomplete="current-password"></div>
+    <div id="loginError" class="error-box"></div>
+    <button class="btn btn-primary btn-full" onclick="doLogin()">Sign In</button>
+    <div class="demo-box">
+      <div class="demo-label">Demo credentials</div>
+      <div>Admin: <span>admin / admin123</span></div>
+      <div>Worker: <span>worker1 / pass123</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- WORKER -->
+<div id="workerScreen" class="screen">
+  <div class="topbar">
+    <div><div class="topbar-title">SITE TRACKER</div><div class="topbar-sub" id="workerName">—</div></div>
+    <button class="btn btn-ghost btn-sm" onclick="doLogout()">Sign out</button>
+  </div>
+  <div class="inner">
+    <div id="geoError" class="error-box"></div>
+    <div class="status-card">
+      <div class="status-row">
+        <div class="dot" id="dot"></div>
+        <div class="status-label" id="statusLabel">NOT TRACKING</div>
+      </div>
+      <div class="timer" id="timerDisplay">00:00:00</div>
+      <div class="timer-lbl">Time on site</div>
+      <div id="nextBlock" style="display:none">
+        <div class="next-row"><span>Next auto-log</span><span class="next-val" id="nextVal">01:00</span></div>
+        <div class="progress"><div class="progress-fill" id="progressFill"></div></div>
+      </div>
+      <div class="session-info" id="sessionInfo" style="display:none"></div>
+    </div>
+    <div class="btn-grid">
+      <button class="btn btn-green" id="btnStart" onclick="startSession()">▶ Start</button>
+      <button class="btn btn-red" id="btnStop" onclick="stopSession()" disabled>■ Stop</button>
+      <button class="btn btn-orange" id="btnManual" onclick="manualLog()" disabled>+ Log Now</button>
+      <button class="btn btn-ghost" id="btnExport" onclick="exportWorkerCSV()" disabled>↓ Export CSV</button>
+      <button class="btn btn-danger" id="btnClearSession" onclick="workerClearSession()" style="grid-column:span 2">✕ Clear Session (Testing)</button>
+    </div>
+    <div class="section-hdr">
+      <span class="section-title">Snapshots</span>
+      <span class="badge" id="snapCount">0 entries</span>
+    </div>
+    <div id="snapList"><div class="empty">Start a session to begin logging.<br>Auto-snapshot every 1 min.</div></div>
+  </div>
+</div>
+
+<!-- ADMIN -->
+<div id="adminScreen" class="screen">
+  <div class="topbar">
+    <div><div class="topbar-title">ADMIN PANEL</div><div class="topbar-sub" id="adminSub">0 sessions</div></div>
+    <button class="btn btn-ghost btn-sm" onclick="doLogout()">Sign out</button>
+  </div>
+  <div class="tabs">
+    <button class="tab active" id="tabSessions" onclick="switchTab('sessions')">Sessions</button>
+    <button class="tab" id="tabWorkers" onclick="switchTab('workers')">Workers</button>
+    <button class="tab" id="tabSettings" onclick="switchTab('settings')">Settings</button>
+    <button class="tab" id="tabData" onclick="switchTab('data')">Data</button>
+  </div>
+  <div class="inner">
+
+    <!-- Sessions -->
+    <div id="tabContentSessions">
+      <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center;">
+        <span class="section-title" style="flex:1">All Sessions</span>
+        <select id="filterWorker" onchange="renderSessions()" style="background:var(--bg);border:1px solid var(--border2);border-radius:6px;padding:5px 8px;font-size:11px;color:var(--text);font-family:var(--mono);">
+          <option value="">All Workers</option>
+        </select>
+        <button class="btn btn-ghost btn-sm" id="btnExportAll" onclick="exportAllCSV()" disabled>↓ Export All</button>
+      </div>
+      <!-- Active now banner -->
+      <div id="activeBanner" style="display:none;background:rgba(63,185,80,.08);border:1px solid rgba(63,185,80,.3);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--green);margin-bottom:12px;"></div>
+      <div id="sessionList"><div class="empty">No sessions yet.</div></div>
+    </div>
+
+    <!-- Workers -->
+    <div id="tabContentWorkers" style="display:none">
+      <div class="card" style="margin-bottom:14px;padding:18px;">
+        <div class="section-title" style="margin-bottom:12px">Add Worker</div>
+        <div class="field"><label>Full Name</label><input id="newName" placeholder="e.g. John Smith"></div>
+        <div class="field"><label>Username</label><input id="newUsername" placeholder="e.g. jsmith"></div>
+        <div class="field"><label>Password</label><input id="newPassword" placeholder="Choose a password"></div>
+        <div id="userError" class="error-box"></div>
+        <div id="userSuccess" class="success-box"></div>
+        <button class="btn btn-orange btn-full" onclick="addWorker()">+ Add Worker</button>
+      </div>
+      <div class="section-hdr" style="margin-bottom:10px">
+        <span class="section-title">Workers</span>
+        <span class="badge" id="workerCount">0</span>
+      </div>
+      <div id="workerList"></div>
+    </div>
+
+    <!-- Settings -->
+    <div id="tabContentSettings" style="display:none">
+      <div class="settings-card">
+        <div class="settings-title">Geofence Radius</div>
+        <div class="settings-row">
+          <span class="settings-label">Out-of-range threshold</span>
+          <span class="settings-val" id="radiusDisplay">500m</span>
+        </div>
+        <input type="range" id="radiusSlider" min="100" max="2000" step="50" value="500"
+          oninput="updateRadius(this.value)"
+          style="width:100%;accent-color:var(--accent);margin-bottom:8px;">
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--dim);">
+          <span>100m</span><span>1km</span><span>2km</span>
+        </div>
+        <div style="margin-top:14px;font-size:11px;color:var(--dim);line-height:1.7;">
+          Snapshots taken more than this distance from the session start point will be flagged as out of range.
+        </div>
+      </div>
+      <div class="settings-card">
+        <div class="settings-title">Log Interval</div>
+        <div class="field" style="margin-bottom:0">
+          <label>Auto-snapshot every</label>
+          <select id="intervalSelect" onchange="updateInterval(this.value)">
+            <option value="1">1 minute (testing)</option>
+            <option value="5">5 minutes</option>
+            <option value="10">10 minutes</option>
+            <option value="15" selected>15 minutes</option>
+            <option value="30">30 minutes</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-full" onclick="saveSettings()">Save Settings</button>
+      <div id="settingsSaved" class="success-box" style="margin-top:10px;"></div>
+    </div>
+
+    <!-- Data management -->
+    <div id="tabContentData" style="display:none">
+      <div class="danger-zone">
+        <div class="danger-title">⚠ Data Management</div>
+        <div class="danger-grid">
+          <button class="btn btn-danger" onclick="confirmAction('clearAll','Clear ALL sessions','This will permanently delete every session from every worker. This cannot be undone.')">Clear All Sessions</button>
+          <button class="btn btn-danger" onclick="showClearByWorker()">Clear by Worker</button>
+          <button class="btn btn-danger" onclick="showClearOlderThan()">Clear Older Than…</button>
+        </div>
+      </div>
+
+      <div id="clearByWorkerPanel" style="display:none" class="settings-card">
+        <div class="settings-title">Clear Sessions by Worker</div>
+        <div class="field">
+          <label>Select Worker</label>
+          <select id="clearWorkerSelect" style="width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;font-size:13px;color:var(--text);font-family:var(--mono);outline:none;"></select>
+        </div>
+        <button class="btn btn-danger btn-full" onclick="confirmClearByWorker()">Clear This Worker's Sessions</button>
+      </div>
+
+      <div id="clearOlderPanel" style="display:none" class="settings-card">
+        <div class="settings-title">Clear Sessions Older Than</div>
+        <div class="field">
+          <label>Days</label>
+          <select id="olderThanDays" style="width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;font-size:13px;color:var(--text);font-family:var(--mono);outline:none;">
+            <option value="7">7 days</option>
+            <option value="14">14 days</option>
+            <option value="30" selected>30 days</option>
+            <option value="60">60 days</option>
+            <option value="90">90 days</option>
+          </select>
+        </div>
+        <button class="btn btn-danger btn-full" onclick="confirmClearOlderThan()">Clear Old Sessions</button>
+      </div>
+
+      <div class="section-hdr" style="margin-top:8px;margin-bottom:10px">
+        <span class="section-title">Storage Info</span>
+      </div>
+      <div id="storageInfo" class="settings-card" style="margin-bottom:0"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ── Storage ───────────────────────────────────────────────────────────────────
+const S = {
+  get: k => { try { const v=localStorage.getItem(k); return v?JSON.parse(v):null; } catch { return null; } },
+  set: (k,v) => { try { localStorage.setItem(k,JSON.stringify(v)); } catch {} },
+  del: k => { try { localStorage.removeItem(k); } catch {} }
+};
+
+const DEFAULT_USERS = [
+  { id:"admin", username:"admin", password:"admin123", role:"admin", name:"Admin" },
+  { id:"w1", username:"worker1", password:"pass123", role:"worker", name:"Worker 1" },
+];
+const getUsers = () => S.get("users") || DEFAULT_USERS;
+const saveUsers = u => S.set("users", u);
+const getSettings = () => S.get("appSettings") || { radius:500, intervalMins:1 };
+const saveSettingsData = d => S.set("appSettings", d);
+
+// State
+let currentUser=null, tracking=false, sessionData=null, snapshots=[], startTime=null;
+let timerInt=null, autoInt=null, secondsSinceLog=0;
+let AUTO_SECS = (getSettings().intervalMins || 1) * 60;
+
+// Helpers
+const fmtDur = ms => { const s=Math.floor(ms/1000); return [Math.floor(s/3600),Math.floor((s%3600)/60),s%60].map(n=>String(n).padStart(2,"0")).join(":"); };
+const fmtTime = iso => new Date(iso).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit",second:"2-digit"});
+const fmtDate = iso => new Date(iso).toLocaleDateString([],{day:"2-digit",month:"short",year:"numeric"});
+const fmtCD = s => `${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`;
+const getPos = () => new Promise((res,rej) => { if(!navigator.geolocation){rej(new Error("Geolocation not supported"));return;} navigator.geolocation.getCurrentPosition(res,rej,{enableHighAccuracy:true,timeout:15000,maximumAge:0}); });
+const showMsg = (id,msg) => { const el=document.getElementById(id); el.textContent=msg; el.style.display="block"; setTimeout(()=>el.style.display="none",4000); };
+const showScreen = id => { document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active")); document.getElementById(id).classList.add("active"); };
+const snapColors = { start:"#58a6ff", end:"#f85149", auto:"#3fb950", manual:"#f0883e", wake:"#bc8cff" };
+
+// Haversine distance in metres
+function distMetres(lat1,lng1,lat2,lng2) {
+  const R=6371000, dLat=(lat2-lat1)*Math.PI/180, dLng=(lng2-lng1)*Math.PI/180;
+  const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+
+// Login
+document.getElementById("loginPass").addEventListener("keydown", e => { if(e.key==="Enter") doLogin(); });
+document.getElementById("loginUser").addEventListener("keydown", e => { if(e.key==="Enter") doLogin(); });
+
+function doLogin() {
+  const u=document.getElementById("loginUser").value.trim(), p=document.getElementById("loginPass").value;
+  const user=getUsers().find(x=>x.username===u&&x.password===p);
+  if(!user){showMsg("loginError","Invalid username or password");return;}
+  currentUser=user;
+  if(user.role==="admin"){showScreen("adminScreen");initAdmin();}
+  else{showScreen("workerScreen");initWorker();}
+}
+
+function doLogout() {
+  stopTimers(); currentUser=null; tracking=false; sessionData=null; snapshots=[]; startTime=null; secondsSinceLog=0;
+  document.getElementById("loginUser").value=""; document.getElementById("loginPass").value="";
+  showScreen("loginScreen");
+}
+
+// ── Worker ────────────────────────────────────────────────────────────────────
+function initWorker() {
+  AUTO_SECS = (getSettings().intervalMins||1)*60;
+  document.getElementById("workerName").textContent=currentUser.name;
+  snapshots=[]; sessionData=null; tracking=false;
+  setStatus("idle"); renderSnaps();
+  const active=S.get(`session:active:${currentUser.id}`);
+  if(active){ sessionData=active; snapshots=active.snapshots||[]; tracking=true; startTime=new Date(active.startTime).getTime(); secondsSinceLog=Math.floor((Date.now()-startTime)/1000)%AUTO_SECS; setStatus("tracking"); renderSnaps(); startTimers(); }
+}
+
+function setStatus(s) {
+  const dot=document.getElementById("dot"), lbl=document.getElementById("statusLabel");
+  dot.className="dot"+(s==="tracking"?" active":s==="ended"?" ended":"");
+  lbl.className="status-label"+(s==="tracking"?" active":s==="ended"?" ended":"");
+  lbl.textContent=s==="tracking"?"TRACKING":s==="ended"?"SESSION ENDED":"NOT TRACKING";
+  document.getElementById("nextBlock").style.display=s==="tracking"?"block":"none";
+  document.getElementById("btnStart").disabled=s!=="idle";
+  document.getElementById("btnStop").disabled=s!=="tracking";
+  document.getElementById("btnManual").disabled=s!=="tracking";
+}
+
+function startTimers() {
+  timerInt=setInterval(()=>{
+    document.getElementById("timerDisplay").textContent=fmtDur(Date.now()-startTime);
+    secondsSinceLog=(secondsSinceLog+1)%AUTO_SECS;
+    const rem=AUTO_SECS-secondsSinceLog;
+    document.getElementById("nextVal").textContent=fmtCD(rem);
+    document.getElementById("progressFill").style.width=((secondsSinceLog/AUTO_SECS)*100)+"%";
+  },1000);
+  autoInt=setInterval(()=>captureSnap("auto"), AUTO_SECS*1000);
+}
+function stopTimers(){ clearInterval(timerInt); clearInterval(autoInt); timerInt=null; autoInt=null; }
+
+async function captureSnap(type) {
+  document.getElementById("geoError").style.display="none";
+  try {
+    const pos=await getPos();
+    const settings=getSettings();
+    const snap={ id:Date.now(), timestamp:new Date().toISOString(), lat:pos.coords.latitude.toFixed(7), lng:pos.coords.longitude.toFixed(7), accuracy:Math.round(pos.coords.accuracy), type, outOfRange:false, distFromStart:null };
+    // Check geofence against session start snap
+    if(sessionData && snapshots.length>0) {
+      const start=snapshots[0];
+      const dist=Math.round(distMetres(parseFloat(start.lat),parseFloat(start.lng),parseFloat(snap.lat),parseFloat(snap.lng)));
+      snap.distFromStart=dist;
+      snap.outOfRange=dist>settings.radius;
+    }
+    snapshots.push(snap);
+    if(sessionData){ sessionData.snapshots=snapshots; S.set(`session:active:${currentUser.id}`,sessionData); }
+    renderSnaps(); return snap;
+  } catch(e){ showMsg("geoError","Location error: "+(e.message||"Could not get position")); return null; }
+}
+
+async function startSession() {
+  document.getElementById("btnStart").disabled=true;
+  const snap=await captureSnap("start");
+  if(!snap){document.getElementById("btnStart").disabled=false;return;}
+  sessionData={ id:`${currentUser.id}-${Date.now()}`, userId:currentUser.id, userName:currentUser.name, startTime:snap.timestamp, endTime:null, snapshots:[snap] };
+  S.set(`session:active:${currentUser.id}`,sessionData);
+  startTime=Date.now(); secondsSinceLog=0; tracking=true;
+  setStatus("tracking");
+  const si=document.getElementById("sessionInfo"); si.style.display="block";
+  si.innerHTML=`Started: <span>${fmtDate(snap.timestamp)} ${fmtTime(snap.timestamp)}</span>`;
+  startTimers();
+}
+
+async function stopSession() {
+  document.getElementById("btnStop").disabled=true; stopTimers();
+  await captureSnap("end");
+  const endTime=new Date().toISOString();
+  const finalSession={...sessionData, endTime, snapshots:[...snapshots]};
+  const hist=S.get(`sessions:${currentUser.id}`)||[]; hist.push(finalSession); S.set(`sessions:${currentUser.id}`,hist);
+  const all=S.get("sessions:all")||[]; all.push(finalSession); S.set("sessions:all",all);
+  S.del(`session:active:${currentUser.id}`);
+  sessionData=null; tracking=false; setStatus("ended");
+  document.getElementById("btnExport").disabled=false; renderSnaps();
+}
+
+async function manualLog(){ await captureSnap("manual"); secondsSinceLog=0; }
+
+function workerClearSession() {
+  if(!confirm("Clear current session and all snapshots? This cannot be undone.")) return;
+  stopTimers();
+  S.del(`session:active:${currentUser.id}`);
+  sessionData=null; snapshots=[]; tracking=false; startTime=null; secondsSinceLog=0;
+  document.getElementById("timerDisplay").textContent="00:00:00";
+  document.getElementById("sessionInfo").style.display="none";
+  setStatus("idle"); renderSnaps();
+}
+
+function renderSnaps() {
+  const list=document.getElementById("snapList");
+  document.getElementById("snapCount").textContent=snapshots.length+" entr"+(snapshots.length===1?"y":"ies");
+  document.getElementById("btnExport").disabled=snapshots.length===0;
+  if(!snapshots.length){list.innerHTML=`<div class="empty">Start a session to begin logging.<br>Auto-snapshot every 1 min.</div>`;return;}
+  list.innerHTML=`<div class="snap-list">${[...snapshots].reverse().map((s,i)=>{
+    const c=snapColors[s.type]||"#8b949e", idx=snapshots.length-i;
+    const oor=s.outOfRange;
+    const distHtml=s.distFromStart!==null?`<div class="snap-dist${oor?'':''}" style="color:${oor?'var(--red)':'var(--dim)'}">${s.distFromStart}m from start${oor?' ⚠ OUT OF RANGE':''}</div>`:'';
+    return `<div class="snap-row${oor?' out-of-range':''}" style="border-left:3px solid ${oor?'var(--red)':c}">
+      <span class="snap-idx">#${idx}</span>
+      <div>
+        <div class="snap-time">${fmtTime(s.timestamp)}</div>
+        <div class="snap-coords">${s.lat}, ${s.lng}</div>
+        <div class="snap-acc">±${s.accuracy}m accuracy</div>
+        ${distHtml}
+      </div>
+      <span class="snap-badge" style="background:${oor?'rgba(248,81,73,.15)':c+'18'};color:${oor?'var(--red)':c}">${s.type}</span>
+    </div>`;
+  }).join("")}</div>`;
+}
+
+function exportWorkerCSV() {
+  if(!snapshots.length)return;
+  const rows=[["#","Timestamp","Latitude","Longitude","Accuracy_m","Type","Dist_From_Start_m","Out_Of_Range"]];
+  snapshots.forEach((s,i)=>rows.push([i+1,s.timestamp,s.lat,s.lng,s.accuracy,s.type,s.distFromStart??'',s.outOfRange?'YES':'NO']));
+  dlCSV(rows,`site-log-${currentUser.username}-${new Date().toISOString().split("T")[0]}.csv`);
+}
+
+// Wake detection
+document.addEventListener("visibilitychange", () => {
+  if(document.visibilityState==="visible" && tracking) {
+    captureSnap("wake");
+    clearInterval(autoInt); secondsSinceLog=0;
+    autoInt=setInterval(()=>captureSnap("auto"), AUTO_SECS*1000);
+  }
+});
+
+// ── Admin ─────────────────────────────────────────────────────────────────────
+function initAdmin(){ switchTab("sessions"); }
+
+function switchTab(t) {
+  ["sessions","workers","settings","data"].forEach(x=>{
+    document.getElementById(`tabContent${x.charAt(0).toUpperCase()+x.slice(1)}`).style.display=t===x?"block":"none";
+    document.getElementById(`tab${x.charAt(0).toUpperCase()+x.slice(1)}`).className="tab"+(t===x?" active":"");
+  });
+  if(t==="sessions") renderSessions();
+  if(t==="workers") renderWorkers();
+  if(t==="settings") loadSettings();
+  if(t==="data") renderDataTab();
+}
+
+function renderSessions() {
+  const allSessions=S.get("sessions:all")||[];
+  const filterVal=document.getElementById("filterWorker").value;
+
+  // Populate filter dropdown
+  const workers=[...new Set(allSessions.map(s=>s.userName))];
+  const sel=document.getElementById("filterWorker");
+  const cur=sel.value;
+  sel.innerHTML='<option value="">All Workers</option>'+workers.map(w=>`<option value="${w}"${w===cur?' selected':''}>${w}</option>`).join("");
+
+  // Active sessions banner
+  const activeBanner=document.getElementById("activeBanner");
+  const users=getUsers().filter(u=>u.role==="worker");
+  const active=users.filter(u=>S.get(`session:active:${u.id}`)).map(u=>u.name);
+  if(active.length){activeBanner.style.display="block";activeBanner.textContent="🟢 Currently on site: "+active.join(", ");}
+  else{activeBanner.style.display="none";}
+
+  const sessions=(filterVal?allSessions.filter(s=>s.userName===filterVal):allSessions).slice().reverse();
+  document.getElementById("adminSub").textContent=allSessions.length+" sessions";
+  document.getElementById("btnExportAll").disabled=allSessions.length===0;
+  const list=document.getElementById("sessionList");
+  if(!sessions.length){list.innerHTML=`<div class="empty">No sessions${filterVal?' for '+filterVal:''}.</div>`;return;}
+
+  list.innerHTML=sessions.map((s,i)=>{
+    const dur=s.endTime?fmtDur(new Date(s.endTime)-new Date(s.startTime)):null;
+    const oorCount=s.snapshots.filter(sn=>sn.outOfRange).length;
+    const snapsHtml=s.snapshots.map((snap,j)=>{
+      const c=snapColors[snap.type]||"#8b949e";
+      const oor=snap.outOfRange;
+      const distHtml=snap.distFromStart!==null?`<div style="font-size:10px;color:${oor?'var(--red)':'var(--dim)'};margin-top:1px">${snap.distFromStart}m from start${oor?' ⚠':''}</div>`:'';
+      return `<div class="snap-row${oor?' out-of-range':''}" style="border-left:3px solid ${oor?'var(--red)':c}">
+        <span class="snap-idx">#${j+1}</span>
+        <div><div class="snap-time">${fmtTime(snap.timestamp)}</div><div class="snap-coords">${snap.lat}, ${snap.lng}</div><div class="snap-acc">±${snap.accuracy}m</div>${distHtml}</div>
+        <span class="snap-badge" style="background:${oor?'rgba(248,81,73,.15)':c+'18'};color:${oor?'var(--red)':c}">${snap.type}</span>
+      </div>`;
+    }).join("");
+    return `<div class="session-row${oorCount?' has-oor':''}">
+      <div class="session-hdr" onclick="toggleSession(${i})">
+        <div>
+          <div class="session-name">${s.userName}${oorCount?`<span class="oor-pill">⚠ ${oorCount} out of range</span>`:''}</div>
+          <div class="session-meta">${fmtDate(s.startTime)} · ${fmtTime(s.startTime)} → ${s.endTime?fmtTime(s.endTime):'<span class="active-pill">Active</span>'}</div>
+        </div>
+        <div style="text-align:right">
+          <div class="session-dur">${dur||'<span class="active-pill">Active</span>'}</div>
+          <div class="session-snaps">${s.snapshots.length} snaps</div>
+        </div>
+      </div>
+      <div class="session-body" id="sb-${i}">
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-bottom:10px">
+          <button class="btn btn-danger btn-sm" onclick="confirmDeleteSession(${i},event)">Delete</button>
+          <button class="btn btn-ghost btn-sm" onclick="exportSessionCSV(${i},event)">↓ Export CSV</button>
+        </div>
+        <div class="snap-list">${snapsHtml}</div>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+function toggleSession(i){ document.getElementById(`sb-${i}`).classList.toggle("open"); }
+
+function exportSessionCSV(i,e) {
+  e.stopPropagation();
+  const filterVal=document.getElementById("filterWorker").value;
+  const allSessions=S.get("sessions:all")||[];
+  const sessions=(filterVal?allSessions.filter(s=>s.userName===filterVal):allSessions).slice().reverse();
+  const s=sessions[i];
+  const rows=[["#","Timestamp","Latitude","Longitude","Accuracy_m","Type","Dist_From_Start_m","Out_Of_Range"]];
+  s.snapshots.forEach((snap,j)=>rows.push([j+1,snap.timestamp,snap.lat,snap.lng,snap.accuracy,snap.type,snap.distFromStart??'',snap.outOfRange?'YES':'NO']));
+  dlCSV(rows,`session-${s.userName}-${s.startTime.split("T")[0]}.csv`);
+}
+
+function exportAllCSV() {
+  const sessions=S.get("sessions:all")||[];
+  const rows=[["Session","Worker","Date","Start","End","Snap_Timestamp","Lat","Lng","Accuracy_m","Type","Dist_From_Start_m","Out_Of_Range"]];
+  sessions.forEach((s,si)=>s.snapshots.forEach(snap=>rows.push([si+1,s.userName,s.startTime.split("T")[0],fmtTime(s.startTime),s.endTime?fmtTime(s.endTime):"Active",snap.timestamp,snap.lat,snap.lng,snap.accuracy,snap.type,snap.distFromStart??'',snap.outOfRange?'YES':'NO'])));
+  dlCSV(rows,`all-sessions-${new Date().toISOString().split("T")[0]}.csv`);
+}
+
+// Delete single session
+function confirmDeleteSession(i,e) {
+  e.stopPropagation();
+  const filterVal=document.getElementById("filterWorker").value;
+  const allSessions=S.get("sessions:all")||[];
+  const sessions=(filterVal?allSessions.filter(s=>s.userName===filterVal):allSessions).slice().reverse();
+  const s=sessions[i];
+  confirmAction('deleteSession', 'Delete this session?', `This will permanently delete ${s.userName}'s session on ${fmtDate(s.startTime)}. Cannot be undone.`, s.id);
+}
+
+// Workers
+function renderWorkers() {
+  const workers=getUsers().filter(u=>u.role==="worker");
+  document.getElementById("workerCount").textContent=workers.length;
+  const list=document.getElementById("workerList");
+  if(!workers.length){list.innerHTML=`<div class="empty">No workers added yet.</div>`;return;}
+  list.innerHTML=workers.map(u=>`<div class="user-row">
+    <div><div class="user-name">${u.name}</div><div class="user-un">@${u.username}</div></div>
+    ${u.id!=="w1"?`<button class="btn btn-sm btn-danger" onclick="confirmAction('removeWorker','Remove ${u.name}?','This removes their login. Their session history will remain.','${u.id}')">Remove</button>`:''}
+  </div>`).join("");
+}
+
+function addWorker() {
+  const name=document.getElementById("newName").value.trim(), username=document.getElementById("newUsername").value.trim(), password=document.getElementById("newPassword").value;
+  if(!name||!username||!password){showMsg("userError","Fill in all fields");return;}
+  const users=getUsers();
+  if(users.find(u=>u.username===username)){showMsg("userError","Username already taken");return;}
+  users.push({id:`w${Date.now()}`,role:"worker",name,username,password});
+  saveUsers(users);
+  document.getElementById("newName").value=""; document.getElementById("newUsername").value=""; document.getElementById("newPassword").value="";
+  showMsg("userSuccess","Worker added ✓"); renderWorkers();
+}
+
+// Settings
+function loadSettings() {
+  const s=getSettings();
+  document.getElementById("radiusSlider").value=s.radius;
+  document.getElementById("radiusDisplay").textContent=s.radius+"m";
+  document.getElementById("intervalSelect").value=s.intervalMins||1;
+}
+function updateRadius(v){ document.getElementById("radiusDisplay").textContent=v+"m"; }
+function updateInterval(v){ /* preview only, saved on button press */ }
+function saveSettings() {
+  const s={ radius:parseInt(document.getElementById("radiusSlider").value), intervalMins:parseInt(document.getElementById("intervalSelect").value) };
+  saveSettingsData(s);
+  AUTO_SECS=s.intervalMins*60;
+  showMsg("settingsSaved","Settings saved ✓");
+}
+
+// Data tab
+function renderDataTab() {
+  const all=S.get("sessions:all")||[];
+  const bytes=new Blob([JSON.stringify(localStorage)]).size;
+  document.getElementById("storageInfo").innerHTML=`
+    <div class="settings-row"><span class="settings-label">Total sessions</span><span class="settings-val">${all.length}</span></div>
+    <div class="settings-row"><span class="settings-label">Total snapshots</span><span class="settings-val">${all.reduce((a,s)=>a+s.snapshots.length,0)}</span></div>
+    <div class="settings-row" style="margin-bottom:0"><span class="settings-label">Storage used</span><span class="settings-val">~${(bytes/1024).toFixed(1)}KB</span></div>`;
+  // Populate worker select for clear-by-worker
+  const workers=getUsers().filter(u=>u.role==="worker");
+  document.getElementById("clearWorkerSelect").innerHTML=workers.map(w=>`<option value="${w.id}">${w.name}</option>`).join("");
+}
+function showClearByWorker(){ const p=document.getElementById("clearByWorkerPanel"); p.style.display=p.style.display==="none"?"block":"none"; }
+function showClearOlderThan(){ const p=document.getElementById("clearOlderPanel"); p.style.display=p.style.display==="none"?"block":"none"; }
+function confirmClearByWorker() {
+  const sel=document.getElementById("clearWorkerSelect"); const name=sel.options[sel.selectedIndex].text;
+  confirmAction('clearByWorker','Clear sessions for '+name+'?','All sessions for this worker will be permanently deleted.',sel.value);
+}
+function confirmClearOlderThan() {
+  const days=document.getElementById("olderThanDays").value;
+  confirmAction('clearOlderThan','Clear sessions older than '+days+' days?','Sessions before this threshold will be permanently deleted.',days);
+}
+
+// ── Confirm overlay ───────────────────────────────────────────────────────────
+let pendingAction=null, pendingPayload=null;
+function confirmAction(action,title,msg,payload='') {
+  pendingAction=action; pendingPayload=payload;
+  document.getElementById("confirmTitle").textContent=title;
+  document.getElementById("confirmMsg").textContent=msg;
+  document.getElementById("overlay").classList.add("show");
+}
+function closeConfirm(){ document.getElementById("overlay").classList.remove("show"); pendingAction=null; }
+function doConfirm() {
+  closeConfirm();
+  if(pendingAction==="clearAll") { S.del("sessions:all"); renderSessions(); renderDataTab(); }
+  else if(pendingAction==="clearByWorker") {
+    const all=(S.get("sessions:all")||[]).filter(s=>s.userId!==pendingPayload);
+    S.set("sessions:all",all); S.del(`sessions:${pendingPayload}`); renderSessions(); renderDataTab();
+  }
+  else if(pendingAction==="clearOlderThan") {
+    const cutoff=new Date(Date.now()-pendingPayload*86400000);
+    const all=(S.get("sessions:all")||[]).filter(s=>new Date(s.startTime)>=cutoff);
+    S.set("sessions:all",all); renderSessions(); renderDataTab();
+  }
+  else if(pendingAction==="deleteSession") {
+    const all=(S.get("sessions:all")||[]).filter(s=>s.id!==pendingPayload);
+    S.set("sessions:all",all); renderSessions(); renderDataTab();
+  }
+  else if(pendingAction==="removeWorker") {
+    saveUsers(getUsers().filter(u=>u.id!==pendingPayload)); renderWorkers();
+  }
+}
+
+// ── CSV ───────────────────────────────────────────────────────────────────────
+function dlCSV(rows,filename) {
+  const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
+  const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"})); a.download=filename; a.click(); URL.revokeObjectURL(a.href);
+}
+</script>
+</body>
+</html>
